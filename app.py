@@ -29,7 +29,7 @@ def question_generator(user_input):
     """
        
     response = client.models.generate_content(
-        model="models/gemini-flash-latest", 
+        model="models/gemini-2.5-flash", 
         contents=prompt
     )
     text = response.text.strip().replace("```json", "").replace("```", "")
