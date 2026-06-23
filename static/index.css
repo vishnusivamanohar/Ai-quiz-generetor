@@ -1,0 +1,236 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    /* Animated Gradient Background */
+    background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+}
+
+@keyframes gradient {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* Glassmorphism Card Container */
+.glass-card {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    padding: 40px;
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+    color: white;
+    animation: fadeIn 0.8s ease-out;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+/* Customize Scrollbar for glass card */
+.glass-card::-webkit-scrollbar {
+    width: 6px;
+}
+
+.glass-card::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.glass-card::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+h1 {
+    font-size: 2.2rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+    letter-spacing: 1px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+p {
+    font-weight: 300;
+    margin-bottom: 25px;
+    opacity: 0.95;
+    font-size: 0.95rem;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    outline: none;
+    color: white;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+input[type="text"]::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+}
+
+select option {
+    background: #201b2d;
+    color: white;
+}
+
+.error-msg {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 10px;
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    color: #fca5a5;
+    font-size: 0.9rem;
+    text-align: center;
+    animation: shake 0.4s ease-in-out;
+}
+
+@keyframes shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    75% {
+        transform: translateX(5px);
+    }
+}
+
+button.submit-btn {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: #fff;
+    color: #e73c7e;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+button.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    background: #f8f8f8;
+}
+
+button.submit-btn:active {
+    transform: translateY(0);
+}
+
+/* Loading Spinner inside Button */
+.spinner {
+    display: none;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(231, 60, 126, 0.3);
+    border-radius: 50%;
+    border-top-color: #e73c7e;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Subtle floating shapes for extra "wow" factor */
+.circle {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    z-index: -1;
+}
+
+.c1 {
+    width: 250px;
+    height: 250px;
+    top: 8%;
+    left: 8%;
+}
+
+.c2 {
+    width: 350px;
+    height: 350px;
+    bottom: 5%;
+    right: 8%;
+}

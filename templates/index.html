@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Quiz Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+</head>
+
+<body>
+
+    <div class="circle c1"></div>
+    <div class="circle c2"></div>
+
+    <div class="glass-card">
+        <h1>Welcome To AI Quiz!</h1>
+        <br>
+        {% if error %}
+        <div class="error-msg">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form id="quizForm" action="/generate_quiz" method="POST">
+            <!-- Topic -->
+            <div class="form-group">
+                <label for="topic">Quiz Topic</label>
+                <input type="text" name="topic" id="topic"
+                    placeholder="Enter your interest (e.g. Python, Marvel, Space...)" required>
+            </div>
+
+            <!-- Difficulty -->
+            <div class="form-group">
+                <label for="difficulty">Difficulty Level</label>
+                <select name="difficulty" id="difficulty">
+                    <option value="easy">Easy</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="hard">Hard</option>
+                </select>
+            </div>
+
+            <!-- Number of questions -->
+            <div class="form-group">
+                <label for="num_questions">Number of Questions (1-20)</label>
+                <input type="number" name="num_questions" id="num_questions" min="1" max="20" value="10" required>
+            </div>
+
+            <!-- Timer Option -->
+            <div class="form-group">
+                <label for="timer_option">Time Limit (Total Quiz)</label>
+                <select name="timer_option" id="timer_option">
+                    <option value="none" selected>No Timer (Relaxed)</option>
+                    <option value="1">1 Minute</option>
+                    <option value="2">2 Minutes</option>
+                    <option value="5">5 Minutes</option>
+                    <option value="10">10 Minutes</option>
+                    <option value="20">20 Minutes</option>
+                </select>
+            </div>
+
+            <button type="submit" id="submitBtn" class="submit-btn">
+                <span class="spinner" id="btnSpinner"></span>
+                <span id="btnText">Generate Quiz</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Background Music Logic -->
+    <script>
+        (function () {
+            const audioUrl = "{{ url_for('static', filename='bg-music.mp3') }}";
+            let audio = null;
+
+            function initAudio() {
+                if (audio) return;
+                audio = new Audio(audioUrl);
+                audio.loop = true;
+                audio.volume = 0.4;
+
+                const setSavedTime = () => {
+                    const savedTime = localStorage.getItem("music_time");
+                    if (savedTime) {
+                        audio.currentTime = parseFloat(savedTime);
+                    }
+                };
+
+                if (audio.readyState >= 1) {
+                    setSavedTime();
+                } else {
+                    audio.addEventListener('loadedmetadata', setSavedTime);
+                }
+
+                setInterval(() => {
+                    if (audio && !audio.paused) {
+                        localStorage.setItem("music_time", audio.currentTime);
+                    }
+                }, 1000);
+            }
+
+            function isMusicOn() {
+                if (localStorage.getItem("music_on") === null) {
+                    localStorage.setItem("music_on", "true");
+                }
+                return localStorage.getItem("music_on") !== "false";
+            }
+
+            function setMusicOn(state) {
+                localStorage.setItem("music_on", state ? "true" : "false");
+            }
+
+            function updateMusicUI(btn, isOn) {
+                if (isOn) {
+                    btn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.063.922-2.063 2.063v4.874c0 1.141.922 2.063 2.063 2.063h1.932l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM17.78 7.22a.75.75 0 00-1.06 1.06 6.727 6.727 0 010 9.516.75.75 0 001.06 1.06 8.227 8.227 0 000-11.636zM20.25 4.75a.75.75 0 00-1.06 1.06 11.23 11.23 0 010 15.87.75.75 0 101.06 1.06c5.234-5.234 5.234-13.754 0-18.99z"/>
+                        </svg>
+                        <span>Music: ON</span>
+                    `;
+                    btn.classList.remove('music-off');
+                    btn.classList.add('music-on');
+                } else {
+                    btn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.063.922-2.063 2.063v4.874c0 1.141.922 2.063 2.063 2.063h1.932l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM19.78 14.78a.75.75 0 01-1.06 0l-2.47-2.47-2.47 2.47a.75.75 0 11-1.06-1.06l2.47-2.47-2.47-2.47a.75.75 0 011.06-1.06l2.47 2.47 2.47-2.47a.75.75 0 011.06 1.06l-2.47 2.47 2.47 2.47a.75.75 0 010 1.06z" />
+                        </svg>
+                        <span>Music: OFF</span>
+                    `;
+                    btn.classList.remove('music-on');
+                    btn.classList.add('music-off');
+                }
+            }
+
+            window.addEventListener('DOMContentLoaded', () => {
+                const btn = document.createElement('button');
+                btn.id = 'music-toggle-btn';
+                btn.className = 'music-control-btn';
+                document.body.appendChild(btn);
+
+                const style = document.createElement('style');
+                style.textContent = `
+                    .music-control-btn {
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        width: auto;
+                        min-width: 120px;
+                        padding: 10px 18px;
+                        z-index: 1000;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        background: rgba(255, 255, 255, 0.15);
+                        backdrop-filter: blur(10px);
+                        -webkit-backdrop-filter: blur(10px);
+                        border: 1px solid rgba(255, 255, 255, 0.25);
+                        color: white !important;
+                        border-radius: 30px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        font-size: 0.85rem;
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+                    }
+                    .music-control-btn:hover {
+                        transform: scale(1.05);
+                        background: rgba(255, 255, 255, 0.25);
+                        border-color: rgba(255, 255, 255, 0.5);
+                        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+                    }
+                    .music-control-btn svg {
+                        width: 18px;
+                        height: 18px;
+                    }
+                    .music-control-btn.music-off {
+                        opacity: 0.6;
+                    }
+                `;
+                document.head.appendChild(style);
+
+                initAudio();
+                let musicOn = isMusicOn();
+                updateMusicUI(btn, musicOn);
+
+                const tryPlay = () => {
+                    initAudio();
+                    if (isMusicOn() && audio.paused) {
+                        audio.play().catch(err => {
+                            console.log("Autoplay blocked, waiting for interaction:", err);
+                        });
+                    }
+                };
+
+                tryPlay();
+                document.addEventListener('click', tryPlay, { once: true });
+
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    initAudio();
+                    
+                    if (isMusicOn() && audio.paused) {
+                        audio.play().catch(err => console.log(err));
+                    } else {
+                        musicOn = !isMusicOn();
+                        setMusicOn(musicOn);
+                        updateMusicUI(btn, musicOn);
+                        if (musicOn) {
+                            audio.play().catch(err => console.log(err));
+                        } else {
+                            audio.pause();
+                        }
+                    }
+                });
+            });
+        })();
+
+        // Form Submission Spinner
+        const form = document.getElementById('quizForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const spinner = document.getElementById('btnSpinner');
+        const btnText = document.getElementById('btnText');
+
+        form.addEventListener('submit', () => {
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.8';
+            submitBtn.style.cursor = 'not-allowed';
+            spinner.style.display = 'inline-block';
+            btnText.innerText = 'Creating Quiz with Gemini AI...';
+        });
+    </script>
+</body>
+
+</html>

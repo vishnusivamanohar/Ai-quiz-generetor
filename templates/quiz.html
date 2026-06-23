@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Quiz Experience</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Confetti Library via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='quiz.css') }}">
+</head>
+<body>
+
+    <div class="quiz-container">
+        <div id="quiz-view">
+            <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 10px; opacity: 0.8;">
+                <span id="progress-text">Question 1/10</span>
+                <span id="timer-text" style="display: none;">⏱️ 00:00</span>
+                <span id="score-text">Score: 0</span>
+            </div>
+            <div class="progress-bar-bg"><div id="progress-fill"></div></div>
+
+            <h2 id="question-text">Loading...</h2>
+            <div class="options-grid" id="options-box"></div>
+            
+            <div id="feedback-area"></div>
+            <div style="overflow: auto;">
+                <button id="next-btn" class="action-btn" style="display: none;" onclick="nextStep()">Continue →</button>
+            </div>
+        </div>
+
+        <div id="result-view" class="result-screen">
+            <h1>Quiz Results</h1>
+            <div class="score-circle" id="final-score">0/10</div>
+            <p id="timeout-msg" style="margin-bottom: 20px; color: var(--error); display: none; font-weight: 600;">Time ran out!</p>
+            <button class="action-btn" style="float:none" onclick="window.location.href='/'">Try Again</button>
+        </div>
+    </div>
+
+    <!-- Background Music Logic -->
+    <script>
+        (function() {
+            const audioUrl = "{{ url_for('static', filename='bg-music.mp3') }}";
+            let audio = null;
+            
+            function initAudio() {
+                if (audio) return;
+                audio = new Audio(audioUrl);
+                audio.loop = true;
+                audio.volume = 0.4;
+                
+                const setSavedTime = () => {
+                    const savedTime = localStorage.getItem("music_time");
+                    if (savedTime) {
+                        audio.currentTime = parseFloat(savedTime);
+                    }
+                };
+
+                if (audio.readyState >= 1) {
+                    setSavedTime();
+                } else {
+                    audio.addEventListener('loadedmetadata', setSavedTime);
+                }
+                
+                setInterval(() => {
+                    if (audio && !audio.paused) {
+                        localStorage.setItem("music_time", audio.currentTime);
+                    }
+                }, 1000);
+            }
+            
+            function isMusicOn() {
+                if (localStorage.getItem("music_on") === null) {
+                    localStorage.setItem("music_on", "true");
+                }
+                return localStorage.getItem("music_on") !== "false";
+            }
+            
+            function setMusicOn(state) {
+                localStorage.setItem("music_on", state ? "true" : "false");
+            }
+            
+            function updateMusicUI(btn, isOn) {
+                if (isOn) {
+                    btn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.063.922-2.063 2.063v4.874c0 1.141.922 2.063 2.063 2.063h1.932l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM17.78 7.22a.75.75 0 00-1.06 1.06 6.727 6.727 0 010 9.516.75.75 0 001.06 1.06 8.227 8.227 0 000-11.636zM20.25 4.75a.75.75 0 00-1.06 1.06 11.23 11.23 0 010 15.87.75.75 0 101.06 1.06c5.234-5.234 5.234-13.754 0-18.99z"/>
+                        </svg>
+                        <span>Music: ON</span>
+                    `;
+                    btn.classList.remove('music-off');
+                    btn.classList.add('music-on');
+                } else {
+                    btn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.063.922-2.063 2.063v4.874c0 1.141.922 2.063 2.063 2.063h1.932l4.5 4.5c.944.945 2.56.276 2.56-1.06V4.06zM19.78 14.78a.75.75 0 01-1.06 0l-2.47-2.47-2.47 2.47a.75.75 0 11-1.06-1.06l2.47-2.47-2.47-2.47a.75.75 0 011.06-1.06l2.47 2.47 2.47-2.47a.75.75 0 011.06 1.06l-2.47 2.47 2.47 2.47a.75.75 0 010 1.06z" />
+                        </svg>
+                        <span>Music: OFF</span>
+                    `;
+                    btn.classList.remove('music-on');
+                    btn.classList.add('music-off');
+                }
+            }
+            
+            window.addEventListener('DOMContentLoaded', () => {
+                const btn = document.createElement('button');
+                btn.id = 'music-toggle-btn';
+                btn.className = 'music-control-btn';
+                document.body.appendChild(btn);
+                
+                const style = document.createElement('style');
+                style.textContent = `
+                    .music-control-btn {
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        width: auto;
+                        min-width: 120px;
+                        padding: 10px 18px;
+                        z-index: 1000;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                        background: rgba(255, 255, 255, 0.15);
+                        backdrop-filter: blur(10px);
+                        -webkit-backdrop-filter: blur(10px);
+                        border: 1px solid rgba(255, 255, 255, 0.25);
+                        color: white !important;
+                        border-radius: 30px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        font-size: 0.85rem;
+                        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+                    }
+                    .music-control-btn:hover {
+                        transform: scale(1.05);
+                        background: rgba(255, 255, 255, 0.25);
+                        border-color: rgba(255, 255, 255, 0.5);
+                        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+                    }
+                    .music-control-btn svg {
+                        width: 18px;
+                        height: 18px;
+                    }
+                    .music-control-btn.music-off {
+                        opacity: 0.6;
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                initAudio();
+                let musicOn = isMusicOn();
+                updateMusicUI(btn, musicOn);
+                
+                const tryPlay = () => {
+                    initAudio();
+                    if (isMusicOn() && audio.paused) {
+                        audio.play().catch(err => {
+                            console.log("Autoplay blocked, waiting for interaction:", err);
+                        });
+                    }
+                };
+                
+                tryPlay();
+                document.addEventListener('click', tryPlay, { once: true });
+                
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    initAudio();
+                    
+                    if (isMusicOn() && audio.paused) {
+                        audio.play().catch(err => console.log(err));
+                    } else {
+                        musicOn = !isMusicOn();
+                        setMusicOn(musicOn);
+                        updateMusicUI(btn, musicOn);
+                        if (musicOn) {
+                            audio.play().catch(err => console.log(err));
+                        } else {
+                            audio.pause();
+                        }
+                    }
+                });
+            });
+        })();
+    </script>
+
+    <!-- Quiz logic and timer -->
+    <script>
+        const questions = {{ questions | tojson | safe }};
+        const answers   = {{ answers | tojson | safe }};
+        const timerOption = '{{ timer_option }}';
+
+        let currentIdx = 0;
+        let score = 0;
+        let isAnswered = false; 
+        
+        let timerInterval = null;
+        let timeLeft = 0;
+        let isTimeOut = false;
+
+        function startTimer() {
+            if (timerOption === 'none') return;
+            
+            timeLeft = parseInt(timerOption) * 60;
+            const timerEl = document.getElementById('timer-text');
+            timerEl.style.display = 'inline-block';
+            updateTimerDisplay();
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                
+                if (timeLeft <= 15) {
+                    timerEl.classList.add('timer-warning');
+                }
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    isTimeOut = true;
+                    endQuizDueToTimeout();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            document.getElementById('timer-text').innerText = 
+                `⏱️ ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function endQuizDueToTimeout() {
+            // Lock option cards
+            const cards = document.querySelectorAll('.option-card');
+            cards.forEach(c => c.classList.add('locked'));
+            
+            document.getElementById('feedback-area').innerHTML = "<span style='color:var(--error)'>TIME'S UP!</span>";
+            
+            setTimeout(() => {
+                showResults();
+            }, 1500);
+        }
+
+        function renderQuestion() {
+            if (isTimeOut) return;
+            isAnswered = false;
+            const data = questions[currentIdx];
+            const text = data[0];
+            const opts = data.slice(1);
+            
+            document.getElementById('progress-fill').style.width = ((currentIdx + 1) / questions.length * 100) + "%";
+            document.getElementById('progress-text').innerText = `Question ${currentIdx + 1}/${questions.length}`;
+            document.getElementById('question-text').innerText = text;
+            document.getElementById('feedback-area').innerText = "";
+            document.getElementById('next-btn').style.display = "none";
+
+            const box = document.getElementById('options-box');
+            box.innerHTML = "";
+            opts.forEach((opt, i) => {
+                const div = document.createElement('div');
+                div.className = 'option-card';
+                div.innerText = opt;
+                div.onclick = () => handleChoice(i + 1, div);
+                box.appendChild(div);
+            });
+        }
+
+        function handleChoice(num, element) {
+            if (isAnswered || isTimeOut) return;
+            isAnswered = true; 
+
+            const correctNum = parseInt(answers[currentIdx]);
+            const cards = document.querySelectorAll('.option-card');
+            
+            cards.forEach(c => c.classList.add('locked'));
+
+            if(num === correctNum) {
+                element.classList.add('correct');
+                document.getElementById('feedback-area').innerHTML = "<span style='color:var(--success)'>CORRECT! +1</span>";
+                score++;
+                document.getElementById('score-text').innerText = `Score: ${score}`;
+            } else {
+                element.classList.add('wrong');
+                cards[correctNum - 1].classList.add('correct');
+                document.getElementById('feedback-area').innerHTML = "<span style='color:var(--error)'>INCORRECT</span>";
+            }
+            document.getElementById('next-btn').style.display = "block";
+        }
+
+        function nextStep() {
+            currentIdx++;
+            if(currentIdx < questions.length) {
+                renderQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('quiz-view').style.display = "none";
+            document.getElementById('result-view').style.display = "block";
+            document.getElementById('final-score').innerText = `${score}/${questions.length}`;
+            
+            if (isTimeOut) {
+                document.getElementById('timeout-msg').style.display = "block";
+            }
+
+            // Trigger beautiful multi-burst confetti if 100% score is achieved
+            if (score === questions.length && questions.length > 0) {
+                triggerConfetti();
+            }
+        }
+
+        function triggerConfetti() {
+            const duration = 5 * 1000;
+            const animationEnd = Date.now() + duration;
+            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1100 };
+
+            function randomInRange(min, max) {
+                return Math.random() * (max - min) + min;
+            }
+
+            const interval = setInterval(function() {
+                const timeLeft = animationEnd - Date.now();
+
+                if (timeLeft <= 0) {
+                    return clearInterval(interval);
+                }
+
+                const particleCount = 50 * (timeLeft / duration);
+                // Burst confetti from left and right sides
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
+                confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
+            }, 250);
+        }
+
+        // Initialize quiz
+        startTimer();
+        renderQuestion();
+    </script>
+</body>
+</html>
